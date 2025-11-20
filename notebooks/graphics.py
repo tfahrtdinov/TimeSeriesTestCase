@@ -1,9 +1,12 @@
 import pandas as pd
+import numpy as np
 from numpy.typing import ArrayLike
 
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from matplotlib import pyplot as plt
 from plotly import graph_objects as go
+
+from utils import ccf_two_direct
 
 
 def ts_plotly_slider(y: pd.Series) -> None:
@@ -59,3 +62,18 @@ def ts_autocorr_plot(
             _, ax = plt.subplots(figsize=(10, 3))
             plot_acf(y, lags=lags, alpha=0.5, fft=fft, title=f"{y.name} acf", ax=ax)
         plt.show()
+
+
+def plot_ccf_two_direct(target: pd.Series, predictor: pd.Series, nlags: int) -> None:
+    ccfs = ccf_two_direct(target, predictor, nlags)
+    lags = np.arange(-nlags + 1, nlags)
+
+    plt.figure(figsize=(10, 3))
+    markerline, stemlines, _ = plt.stem(lags, ccfs)
+    plt.setp(stemlines, linewidth=0.7)
+    plt.setp(markerline, markersize=3)
+    plt.xlabel("lag")
+    plt.ylabel("CCF")
+    plt.title(f"Bidirectional CCF, {target.name} vs {predictor.name}")
+    plt.tight_layout()
+    plt.show()
