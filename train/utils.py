@@ -1,4 +1,6 @@
+import os
 import logging
+from dotenv import load_dotenv
 from pathlib import Path
 from enum import StrEnum
 
@@ -6,7 +8,11 @@ import mlflow
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-ENV_PATH = Path(BASE_DIR / "env")
+ENV_PATH = BASE_DIR / ".env"
+
+load_dotenv(ENV_PATH)
+
+MLFLOW_TRACKING_URI = f"http://{os.getenv("MLFLOW_HOST")}:{os.getenv("MLFLOW_PORT")}"
 
 logger = logging.getLogger(__name__)
 

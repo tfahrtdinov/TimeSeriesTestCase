@@ -1,6 +1,5 @@
 import os
 import logging
-from dotenv import load_dotenv
 from typing import Optional
 
 import mlflow
@@ -14,11 +13,9 @@ from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_err
 
 
 from train.load_data import load_data_df, split_data
-from train.utils import TargetColumn, get_or_create_experiment, ENV_PATH
-
+from train.utils import TargetColumn, get_or_create_experiment, MLFLOW_TRACKING_URI
 
 logger = logging.getLogger(__name__)
-load_dotenv(ENV_PATH)
 
 N_SPLITS = 3
 VALID_FRAC = 0.3
@@ -44,7 +41,7 @@ def optuna_objective(
 
     with mlflow.start_run(run_name=f"trial number {trial.number}", nested=True):
         params = {
-            "n_estimators": trial.suggest_int("n_estimators", 100, 500, step=50),
+            "n_estimators": trial.suggest_int("n_estimators", 100, 300, step=50),
             "max_depth": trial.suggest_int("max_depth", 3, 9),
             "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
             "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
@@ -54,7 +51,7 @@ def optuna_objective(
             "reg_lambda": trial.suggest_float("reg_lambda", 0.01, 1, log=True),
         }
 
-        model = xgb.XGBRegressor(n_jobs=-1, **params)
+        model = xgb.XGBRegressor(n_jobs=-1, seed=int(os.getenv("SEED", 1407)), **params)
         scores = cross_validate(
             model,
             features,
@@ -81,6 +78,7 @@ def train_optuna(
     experiment_id: str,
     run_name: str,
     n_trials: int,
+    target_name: TargetColumn,
     features_train: NDArray[np.float32],
     target_train: NDArray[np.float32],
     features_test: NDArray[np.float32],
@@ -93,6 +91,7 @@ def train_optuna(
     Args:
         experiment_id: MLflow experiment identifier.
         run_name: name for the MLflow run.
+        target_name: target name str.
         n_trials: number of Optuna trials to execute.
         features_train: training feature matrix.
         target_train: training target array.
@@ -118,7 +117,9 @@ def train_optuna(
         )
         logger.info("Fitting model with best params")
 
-        best_model = xgb.XGBRegressor(**study.best_params)
+        best_model = xgb.XGBRegressor(
+            seed=int(os.getenv("SEED", 1407)), **study.best_params
+        )
         best_model.fit(features_train, target_train)
 
         target_test_pred = best_model.predict(features_test)
@@ -132,7 +133,7 @@ def train_optuna(
         logger.info("Logging best model")
         mlflow.sklearn.log_model(  # type: ignore
             sk_model=best_model,
-            name="xgboost-model",
+            name=f"xgboost-model {target_name}",
             input_example=features_train,
             registered_model_name="xgboost-model",
         )
@@ -162,9 +163,6 @@ def train(
         run_name: name for the MLflow run.
         n_trials: number of Optuna trials to perform.
         return_model: whether to return a trained model.
-
-    Raises:
-        RuntimeError: if MLFLOW_TRACKING_URI is not defined in the environment.
     """
 
     logger.info(f"Getting data for {experiment_name}")
@@ -176,13 +174,7 @@ def train(
     )
 
     logger.info("Setting up MLFlow")
-
-    mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
-    if mlflow_uri is None:
-        logger.error("MLFLOW_TRACKING_URI required in your environment")
-        raise RuntimeError("MLFLOW_TRACKING_URI required in your environment")
-
-    mlflow.set_tracking_uri(mlflow_uri)
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     experiment_id = get_or_create_experiment(experiment_name)
     mlflow.set_experiment(experiment_id=experiment_id)
 
@@ -191,6 +183,7 @@ def train(
         experiment_id=experiment_id,
         run_name=run_name,
         n_trials=n_trials,
+        target_name=target_name,
         features_train=features_train,
         features_test=features_test,
         target_train=target_train,

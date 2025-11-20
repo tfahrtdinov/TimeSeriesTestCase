@@ -1,4 +1,3 @@
-import os
 import logging
 from typing import cast
 
@@ -58,7 +57,7 @@ def split_data(
         features,
         y,
         test_size=test_size,  # type: ignore
-        random_state=os.getenv("SEED"),
+        shuffle=False,
     )
 
     return (
