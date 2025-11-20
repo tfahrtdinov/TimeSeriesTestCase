@@ -2,7 +2,9 @@ from typing import cast
 
 import pandas as pd
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
+from tslearn.metrics import dtw
 from statsmodels.tsa.stattools import adfuller, kpss, ccf, grangercausalitytests
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
@@ -99,3 +101,40 @@ def granger_test(
         )
     else:
         return np.array([])
+
+
+def normalize_windows(values: NDArray[np.float64]) -> NDArray[np.float64]:
+    """
+    Normalizes numpy sliding_window_view
+    Args:
+        values: sliding_window_view of 1d array
+    Returns:
+        Normalized sliding_window_view of 1d array
+    """
+    return (values - values.mean(axis=1, keepdims=True)) / (
+        values.std(axis=1, keepdims=True) + 1e-8
+    )
+
+
+def dtw_rolling(x: pd.Series, y: pd.Series, window: int = 100) -> pd.Series:
+    """
+    Compute DTW distances on rolling, z-normalized windows of two time series.
+
+    Args:
+        x: First time series.
+        y: Second time series (same length as x).
+        window: Rolling window size.
+
+    Returns:
+        A Series of DTW distances, one value per window, aligned to the end
+        of each window.
+    """
+    normalized_x = normalize_windows(sliding_window_view(x.values, window))  # type: ignore
+    normalized_y = normalize_windows(sliding_window_view(y.values, window))  # type: ignore
+
+    distances = np.empty(normalized_x.shape[0], dtype=np.float64)
+
+    for i, (x_wind, y_wind) in enumerate(zip(normalized_x, normalized_y)):
+        distances[i] = dtw(x_wind, y_wind) / window
+
+    return pd.Series(distances, index=x.index[window - 1 :])

@@ -11,6 +11,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "sktime>=0.39.0",
     "statsmodels>=0.14.5",
+    "tslearn>=0.7.0",
 ]
 
 [dependency-groups]
