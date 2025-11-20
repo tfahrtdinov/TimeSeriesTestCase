@@ -44,7 +44,7 @@ def ts_autocorr_plot(
     Returns:
         None
     """
-    with plt.style.context("bmh"), pd.option_context("plotting.backend", "matplotlib"):
+    with plt.style.context("bmh"):
         if pacf:
             plt.figure(figsize=(10, 3))
             layout = (1, 2)
