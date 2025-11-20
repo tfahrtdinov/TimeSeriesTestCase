@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[ocd]
+build/
+dist/
+wheels/
+*.egg-info
+
+# IDE configs and OS
+.idea/
+.DS_Store
+
+# Data
+data/
+
+# Caches
+.ruff_cache/
+.pyright/
+
+# Virtual environments
+.venv
+.env
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb~
+
+# Logs
+logs/
+*.log
