@@ -65,6 +65,16 @@ def ts_autocorr_plot(
 
 
 def plot_ccf_two_direct(target: pd.Series, predictor: pd.Series, nlags: int) -> None:
+    """
+    Plot bidirectional cross-correlation between two time series.
+
+    Args:
+       target: The target time series.
+       predictor: The predictor time series.
+       nlags: Number of lags to compute on each side.
+    Returns:
+        None
+    """
     ccfs = ccf_two_direct(target, predictor, nlags)
     lags = np.arange(-nlags + 1, nlags)
 
