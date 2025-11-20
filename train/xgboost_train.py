@@ -1,7 +1,7 @@
 import os
 import logging
-from pathlib import Path
 from dotenv import load_dotenv
+from typing import Optional
 
 import mlflow
 import optuna
@@ -13,14 +13,12 @@ from sklearn.model_selection import cross_validate, TimeSeriesSplit
 from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
 
 
-# from train.load_data import load_data_df, calculate_features, split_data
-from train.utils import TargetColumn, get_or_create_experiment
+from train.load_data import load_data_df, split_data
+from train.utils import TargetColumn, get_or_create_experiment, ENV_PATH
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 logger = logging.getLogger(__name__)
-load_dotenv(Path(BASE_DIR / ".env"))
+load_dotenv(ENV_PATH)
 
 N_SPLITS = 3
 VALID_FRAC = 0.3
@@ -87,7 +85,8 @@ def train_optuna(
     target_train: NDArray[np.float32],
     features_test: NDArray[np.float32],
     target_test: NDArray[np.float32],
-) -> None:
+    return_model: bool = False,
+) -> Optional[xgb.XGBRegressor]:
     """
     Run Optuna study to find optimal hyperparameters set and train final XGBoost model.
 
@@ -99,6 +98,7 @@ def train_optuna(
         target_train: training target array.
         features_test: test feature matrix.
         target_test: test target array.
+        return_model: whether to return a trained model.
 
     Returns:
         None
@@ -143,10 +143,16 @@ def train_optuna(
         mlflow.log_figure(fig, "feature_importance.png")
         plt.close(fig)
 
+        return best_model if return_model else None
+
 
 def train(
-    target_name: TargetColumn, experiment_name: str, run_name: str, n_trials: int
-) -> None:
+    target_name: TargetColumn,
+    experiment_name: str,
+    run_name: str,
+    n_trials: int,
+    return_model: bool = False,
+) -> Optional[xgb.XGBRegressor]:
     """
     Full training pipeline for XGBoost with MLflow tracking and Optuna optimization.
 
@@ -155,6 +161,7 @@ def train(
         experiment_name: MLflow experiment name.
         run_name: name for the MLflow run.
         n_trials: number of Optuna trials to perform.
+        return_model: whether to return a trained model.
 
     Raises:
         RuntimeError: if MLFLOW_TRACKING_URI is not defined in the environment.
@@ -162,11 +169,11 @@ def train(
 
     logger.info(f"Getting data for {experiment_name}")
 
-    # features_train, features_test, target_train, target_test = split_data(
-    #     calculate_features(load_data_df()),
-    #     target_col="monetary_value_30",
-    #     test_size=TEST_FRAC,
-    # )
+    features_train, features_test, target_train, target_test = split_data(
+        df=load_data_df(),
+        target_col=target_name,
+        test_size=TEST_FRAC,
+    )
 
     logger.info("Setting up MLFlow")
 
@@ -180,13 +187,16 @@ def train(
     mlflow.set_experiment(experiment_id=experiment_id)
 
     logger.info(f"Starting optuna optimization with {n_trials} trials")
-    # train_optuna(
-    #     experiment_id=experiment_id,
-    #     run_name=run_name,
-    #     n_trials=n_trials,
-    #     features_train=features_train,
-    #     features_test=features_test,
-    #     target_train=target_train,
-    #     target_test=target_test,
-    # )
+    model = train_optuna(
+        experiment_id=experiment_id,
+        run_name=run_name,
+        n_trials=n_trials,
+        features_train=features_train,
+        features_test=features_test,
+        target_train=target_train,
+        target_test=target_test,
+        return_model=return_model,
+    )
     logger.info("Finished optuna optimization")
+
+    return model

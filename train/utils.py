@@ -1,8 +1,12 @@
 import logging
+from pathlib import Path
 from enum import StrEnum
 
 import mlflow
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+ENV_PATH = Path(BASE_DIR / "env")
 
 logger = logging.getLogger(__name__)
 

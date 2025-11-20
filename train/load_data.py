@@ -1,4 +1,4 @@
-# import os
+import os
 import logging
 from typing import cast
 
@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from sklearn.model_selection import train_test_split
 
 from train.utils import TargetColumn
+from train.feature_extract import get_features
 
 
 logger = logging.getLogger(__name__)
@@ -24,10 +25,6 @@ def load_data_df() -> pd.DataFrame:
     df = pd.read_csv(DATASET, index_col="TimeStamp")
     df.index = pd.to_datetime(df.index)
     return df
-
-
-def calculate_features(df: pd.DataFrame, target_col: TargetColumn) -> None:
-    pass
 
 
 def split_data(
@@ -51,13 +48,17 @@ def split_data(
     Returns:
         feature_train, feature_test, target_train, target_test arrays, each NDArray[np.float32]
     """
-    features = df.drop(columns=[target_col]).to_numpy(dtype=np.float32)
     y = df[target_col].to_numpy(dtype=np.float32)
+    features = get_features(df, target_col, windows=[i for i in range(12, 12 * 5, 12)])
+
+    y = y[~np.isnan(features).any(axis=1)]
+    features = features[~np.isnan(features).any(axis=1)]
 
     X_train, X_test, y_train, y_test = train_test_split(
         features,
         y,
         test_size=test_size,  # type: ignore
+        random_state=os.getenv("SEED"),
     )
 
     return (
