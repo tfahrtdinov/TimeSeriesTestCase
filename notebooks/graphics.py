@@ -87,3 +87,39 @@ def plot_ccf_two_direct(target: pd.Series, predictor: pd.Series, nlags: int) -> 
     plt.title(f"Bidirectional CCF, {target.name} vs {predictor.name}")
     plt.tight_layout()
     plt.show()
+
+
+def plot_histograms_plotly(df: pd.DataFrame) -> None:
+    """
+    Draws Plotly style histogram.
+
+    Args:
+        df: dataframe with time series
+
+    Returns:
+        None
+    """
+    fig = go.Figure()
+    for col in df.columns:
+        fig.add_trace(go.Histogram(x=df[col], name=col, opacity=0.5))
+
+    fig.update_layout(
+        barmode="overlay",
+        title="Histograms of all columns",
+        xaxis_title="Value",
+        yaxis_title="Frequency",
+    )
+    fig.show()
+
+
+def plot_fc(predict, y_true, index: pd.DatetimeIndex, title: str):
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(y=y_true, x=index, name="True values"))
+    fig.add_trace(go.Scatter(y=predict, x=index, name="Predicted values"))
+    fig.update_layout(
+        title=title,
+        showlegend=True,
+        xaxis=dict(rangeslider=dict(visible=True), type="date"),
+    )
+    fig.show()
